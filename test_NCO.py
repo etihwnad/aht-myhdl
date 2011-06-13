@@ -94,7 +94,7 @@ def test_period():
         return instances()
 
     N = 16
-    for tune in (1, 2, 17, 2**(N-2)-1):
+    for tune in (1, 2, 16, 17, 32, 64, 2**(N-2)-1):
         print '---------------------------'
         print 'tune:', tune
         print 'avg period:', fcw2period(tune, N)

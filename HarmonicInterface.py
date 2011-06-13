@@ -8,10 +8,10 @@ ACTIVE_LOW, INACTIVE_HIGH = 0,1
 
 from SPISlave import SPISlave
 from NCO import NCO
-#from ChannelCtl import ChannelCtl
 from SwitchCtl import SwitchCtl
 
 def HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
+        nco_i, nco_q, multA, multB,
         clk_out, reset_out, scl_out, cs_out, dout,
         swAp, swAn,
         cintAn, zeroAn, fastAn, tuneAn,
@@ -19,7 +19,6 @@ def HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
         swBp, swBn,
         cintBn, zeroBn, fastBn, tuneBn,
         cintBp, zeroBp, fastBp, tuneBp):
-        #multA, multB):
     """Harmonic digital interface
     
     clk     - input clock
@@ -53,18 +52,13 @@ def HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
     # NCO
     mA = Signal(intbv(0)[0])
     mB = Signal(intbv(0)[0])
-    nco = NCO(N, clk_in, reset_in, rst, fcw, mA, mB)
+    nco = NCO(N, clk_in, reset_in, rst, fcw, nco_i, nco_q)
 
     # Channels
     sA = Signal(intbv(0)[7:])
     sB = Signal(intbv(0)[7:])
-    channelA = SwitchCtl(mA, cal, seA, sA)
-    channelB = SwitchCtl(mB, cal, seB, sB)
-
-    #@always(clk_in.posedge)
-    #def multout():
-    #    multA.next = mA
-    #    multB.next = mB
+    channelA = SwitchCtl(multA, cal, seA, sA)
+    channelB = SwitchCtl(multB, cal, seB, sB)
 
     @always(clk_in.posedge)
     def switchOut():
@@ -113,7 +107,8 @@ def convert():
     clk_in, reset_in, scl_in, cs_in = [Signal(intbv(0)[0]) for i in range(4)]
     clk_out, reset_out, scl_out, cs_out = [Signal(intbv(0)[0]) for i in range(4)]
     din, dout = [Signal(intbv(0)[0]) for i in range(2)]
-    #multA, multB = [Signal(intbv(0)[0]) for i in range(2)]
+    nco_i, nco_q = [Signal(intbv(0)[0]) for i in range(2)]
+    multA, multB = [Signal(intbv(0)[0]) for i in range(2)]
 
     swAn = Signal(intbv(0)[7:])
     swAp = Signal(intbv(0)[7:])
@@ -132,16 +127,17 @@ def convert():
     tuneBn = Signal(intbv(0)[12:])
     tuneBp = Signal(intbv(0)[12:])
 
-    toVerilog(
-        HarmonicInterface,
-        clk_in, reset_in, scl_in, cs_in, din,
-        clk_out, reset_out, scl_out, cs_out, dout,
-        swAp, swAn,
-        cintAn, zeroAn, fastAn, tuneAn,
-        cintAp, zeroAp, fastAp, tuneAp,
-        swBp, swBn,
-        cintBn, zeroBn, fastBn, tuneBn,
-        cintBp, zeroBp, fastBp, tuneBp)
+    #toVerilog(
+        #HarmonicInterface,
+        #clk_in, reset_in, scl_in, cs_in, din,
+        #nco_i, nco_q, multA, multB,
+        #clk_out, reset_out, scl_out, cs_out, dout,
+        #swAp, swAn,
+        #cintAn, zeroAn, fastAn, tuneAn,
+        #cintAp, zeroAp, fastAp, tuneAp,
+        #swBp, swBn,
+        #cintBn, zeroBn, fastBn, tuneBn,
+        #cintBp, zeroBp, fastBp, tuneBp)
 
-convert()
+#convert()
 

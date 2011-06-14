@@ -102,8 +102,8 @@ def test_period():
         def bench_NCO_period():
             return test(tune, N)
         check = test(tune, N)
-        trace = traceSignals(bench_NCO_period)
-        sim = Simulation(trace)
+        #trace = traceSignals(bench_NCO_period)
+        sim = Simulation(bench_NCO_period())
         sim.run()
 
 

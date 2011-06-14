@@ -92,14 +92,6 @@ class TestShiftRegister:
             sim = Simulation(tb)
             sim.run()
 
-    def test_timing(self):
-        def bench_SPISlave():
-            return self.makeN_tester(8)
-
-        tb = traceSignals(bench_SPISlave)
-        sim = Simulation(tb)
-        sim.run()
-
     def bench_seriesDevices(self):
         clk = Signal(bool(0))
         reset, scl, cs = [Signal(bool(0)) for i in range(3)]
@@ -164,12 +156,19 @@ class TestShiftRegister:
         return instances()
 
     def test_seriesDevices(self):
-        tb = traceSignals(self.bench_seriesDevices)
+        tb = self.bench_seriesDevices()
+        sim = Simulation(tb)
+        sim.run()
+
+    def vcd_test_timing(self):
+        def bench_SPISlave():
+            return self.makeN_tester(8)
+
+        tb = traceSignals(bench_SPISlave)
         sim = Simulation(tb)
         sim.run()
 
 
 if __name__ == '__main__':
-    TestShiftRegister().test_timing()
-    TestShiftRegister().test_seriesDevices()
+    TestShiftRegister().vcd_test_timing()
 

@@ -1,6 +1,7 @@
 
 import os
 from random import randrange
+from math import ceil, floor
 
 from myhdl import *
 
@@ -13,6 +14,8 @@ PERIOD = 10
 
 # system clock, e.g. NS430 cpu clock
 sysclk = Signal(bool(0))
+
+counter = Signal(intbv(0))
 
 # harmonic digital lines
 clk_in, reset_in, scl_in, cs_in = [Signal(intbv(0)[0]) for i in range(4)]
@@ -38,20 +41,27 @@ tuneAp = Signal(intbv(0)[12:])
 tuneBn = Signal(intbv(0)[12:])
 tuneBp = Signal(intbv(0)[12:])
 
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+def fcw2period(fcw, N):
+    return float(2**N) / fcw
+
 # get a harmonic instance
-harmonic = HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
-    nco_i, nco_q, multA, multB,
-    clk_out, reset_out, scl_out, cs_out, dout,
-    swAp, swAn,
-    cintAn, zeroAn, fastAn, tuneAn,
-    cintAp, zeroAp, fastAp, tuneAp,
-    swBp, swBn,
-    cintBn, zeroBn, fastBn, tuneBn,
-    cintBp, zeroBp, fastBp, tuneBp)
+def mkharmonic():
+    return  HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
+        nco_i, nco_q, multA, multB,
+        clk_out, reset_out, scl_out, cs_out, dout,
+        swAp, swAn,
+        cintAn, zeroAn, fastAn, tuneAn,
+        cintAp, zeroAp, fastAp, tuneAp,
+        swBp, swBn,
+        cintBn, zeroBn, fastBn, tuneBn,
+        cintBp, zeroBp, fastBp, tuneBp)
 
-class SPI:
-    pass
-
+class SPI: pass
 spi = SPI()
 spi.clk = sysclk
 spi.scl = scl_in
@@ -59,10 +69,43 @@ spi.cs = cs_in
 spi.din = din
 spi.dout = dout
 
+class HarmonicVector:
+    bitpos = {
+            'cal':slice(48,47),
+            'rst':slice(47,46),
+            'fcw':slice(46,32),
+            'cintA':slice(32,31),
+            'zeroA':slice(31,30),
+            'seA':slice(30,29),
+            'fastA':slice(29,28),
+            'tuneA':slice(28,16),
+            'cintB':slice(16,15),
+            'zeroB':slice(15,14),
+            'seB':slice(14,13),
+            'fastB':slice(13,12),
+            'tuneB':slice(12,0)
+            }
+
+    def __init__(self, data=0):
+        self.__dict__['data'] = intbv(data)[48:]
+
+    def __setattr__(self, name, value):
+        if name == 'data':
+            self.__dict__['data'] = intbv(value)[48:]
+        elif name not in self.bitpos:
+            raise KeyError('%s is not a valid element' % name)
+        else:
+            self.__dict__['data'][self.bitpos[name]] = intbv(value)
+
+    def __getattr__(self, name):
+        if name in self.bitpos:
+            return self.data[self.bitpos[name]]
+
+
+
 @always(delay(PERIOD//2))
 def sysclock():
     sysclk.next = not sysclk
-    print sysclk
 
 
 N_DATA_BITS = 48
@@ -74,6 +117,7 @@ class TestSingleHarmonic:
         yield sysclk.posedge
 
     def bench_spi_shift(self):
+        harmonic = mkharmonic()
         @instance
         def check():
             # a batch of random inputs
@@ -100,20 +144,20 @@ class TestSingleHarmonic:
         sim.run()
 
     def bench_spi_passthru(self):
+        harmonic = mkharmonic()
         @instance
         def check():
-            for i in range(10):
+            for i in range(2**4):
+                i = intbv(i)
+
                 sysclock.next = 0
                 yield self.sysreset()
 
-                clk_in.next = randrange(2)
-                scl_in.next = randrange(2)
-                reset_in.next = randrange(2)
-                cs_in.next = randrange(2)
+                clk_in.next = i[3]
+                scl_in.next = i[2]
+                reset_in.next = i[1]
+                cs_in.next = i[0]
                 yield sysclk.posedge
-                yield sysclk.posedge
-                print map(bin, [clk_in, scl_in, reset_in, cs_in])
-                print map(bin, [clk_out, scl_out, reset_out, cs_out])
 
                 assert clk_out == clk_in
                 assert scl_out == scl_in
@@ -126,110 +170,142 @@ class TestSingleHarmonic:
         sim = Simulation(self.bench_spi_passthru())
         sim.run()
 
+    def bench_spi_tune(self):
+        harmonic = mkharmonic()
+        @instance
+        def check():
+            for trial in range(10):
+                indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                invec = HarmonicVector(indata)
+                yield self.sysreset()
+                yield tx(spi, indata)
+
+                assert invec.tuneA == tuneAn
+                assert invec.tuneA == ~tuneAp
+                assert invec.tuneB == tuneBn
+                assert invec.tuneB == ~tuneBp
+                assert invec.cintA == cintAn
+                assert invec.cintA == (not cintAp)
+                assert invec.zeroA == zeroAn
+                assert invec.zeroA == (not zeroAp)
+                assert invec.fastA == fastAn
+                assert invec.fastA == (not fastAp)
+                assert invec.cintB == cintBn
+                assert invec.cintB == (not cintBp)
+                assert invec.zeroB == zeroBn
+                assert invec.zeroB == (not zeroBp)
+                assert invec.fastB == fastBn
+                assert invec.fastB == (not fastBp)
+            raise StopSimulation
+        return sysclock, harmonic, check
             
+    def test_spi_tune(self):
+        sim = Simulation(self.bench_spi_tune())
+        sim.run()
 
 
+    def make_bench_spi_nco(self, fcw):
+        # connect NCO to switches
+        harmonic = HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
+            nco_i, nco_q, nco_i, nco_q,
+            clk_out, reset_out, scl_out, cs_out, dout,
+            swAp, swAn,
+            cintAn, zeroAn, fastAn, tuneAn,
+            cintAp, zeroAp, fastAp, tuneAp,
+            swBp, swBn,
+            cintBn, zeroBn, fastBn, tuneBn,
+            cintBp, zeroBp, fastBp, tuneBp)
+
+        a,b,c,d,e,f,g = downrange(7)
+
+        swAb = swAn(b)
+        swBb = swBn(b)
+    
+        @always(delay(5*PERIOD))
+        def ncoclock():
+            clk_in.next = not clk_in
+
+        @always(clk_in.posedge)
+        def cnt():
+            counter.next = counter + 1
 
 
+        foundA = Signal(bool(0))
+        lastA = Signal(intbv(0))
+        @always(swAb.negedge)
+        def monitorA():
+            if lastA > counter:
+                foundA.next = False
+            elif lastA != 0:
+                ideal = fcw2period(fcw, 16)
+                period = counter - lastA
+                assert (period == int(floor(ideal)) or
+                        period == int(ceil(ideal)))
+                foundA.next = True
+            lastA.next = counter
+
+        foundB = Signal(bool(0))
+        lastB = Signal(intbv(0))
+        @always(swBb.negedge)
+        def monitorB():
+            if lastB > counter:
+                foundB.next = False
+            elif lastB != 0:
+                ideal = fcw2period(fcw, 16)
+                period = counter - lastB
+                assert (period == int(floor(ideal)) or
+                        period == int(ceil(ideal)))
+                foundB.next = True
+            lastB.next = counter
+
+        @instance
+        def control():
+            #lastB.next = 0
+            yield self.sysreset()
+            invec = HarmonicVector(0)
+            invec.cal = 0 #no calibration
+            invec.rst = 1
+            invec.fcw = fcw
+            counter.next = 0
+            print 'indata:', bin(invec.data, 48)
+            #yield self.sysreset()
+            yield tx(spi, invec.data)
+            invec.rst = 1 #run the NCO
+            yield tx(spi, invec.data)
+            counter.next = 0
+
+            print 'fcw:', bin(invec.fcw, 14), invec.fcw
+            # run for master period
+            GRR = 2**16 / gcd(invec.fcw, 2**16)
+            print 'GRR:', GRR
+            for i in range(GRR):
+                yield clk_in.negedge
+
+            for i in range(int(fcw2period(fcw, 16))):
+                if foundA and foundB:
+                    break
+                yield clk_in.negedge
+
+            #ensure we actually found edges...
+            assert foundA
+            assert foundB
+            raise StopSimulation
+        return (sysclock, harmonic, ncoclock, cnt,
+                monitorA, monitorB, control)
+
+    def test_spi_nco(self):
+        for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3]:
+            if fcw == -1:
+                fcw = randrange(2**14)
+            tb = self.make_bench_spi_nco(fcw)
+            sim = Simulation(tb)
+            sim.run()
 
 
-
-## test vector to send in via SPI
-#indata = Signal(intbv(0)[3*16:])
-#
-#def start():
-#    scl_in.next = 0
-#    cs_in.next = 0
-#    yield clk_in.negedge
-#
-#def sendBit(b):
-#    scl_in.next = 0
-#    din.next = b
-#    yield delay(2)
-#    scl_in.next = 1
-#    yield clk_in.negedge
-#
-#def stop():
-#    scl_in.next = 0
-#    cs_in.next = 1
-#    yield clk_in.negedge
-#
-#def spi_tx(word, n):
-#    yield start()
-#    for i in downrange(n):
-#        yield sendBit(word[i])
-#    yield stop()
-#
-#
-#def bench_HarmonicInterface():
-#    harmonic = HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
-#        nco_i, nco_q, multA, multB,
-#        clk_out, reset_out, scl_out, cs_out, dout,
-#        swAp, swAn,
-#        cintAn, zeroAn, fastAn, tuneAn,
-#        cintAp, zeroAp, fastAp, tuneAp,
-#        swBp, swBn,
-#        cintBn, zeroBn, fastBn, tuneBn,
-#        cintBp, zeroBp, fastBp, tuneBp)
-#
-#    @always_comb
-#    def wires():
-#        """Connect NCO to multiplier"""
-#        multA.next = nco_i
-#        multB.next = nco_q
-#
-#    @always(delay(PERIOD//2))
-#    def clkgen():
-#        clk_in.next = not clk_in
-#
-#
-#    @instance
-#    def transaction():
-#        reset_in.next = 1
-#        yield clk_in.negedge
-#
-#        reset_in.next = 0
-#        yield clk_in.negedge
-#
-#        reset_in.next = 1
-#        yield clk_in.negedge
-#
-#        #                               /  channel A   \/  channel B   \
-#        #               cr/   fcw      \czsf/ tuneA    \czsf/ tuneA    \
-#        indata.next = 0b010101000000000010101000100000000101100001111111
-#        yield spi_tx(indata, 48)
-#
-#        cs_in.next = 0
-#        for i in range(1000):
-#            yield clk_in.negedge
-#
-#        #                               /  channel A   \/  channel B   \
-#        #               cr/   fcw      \czsf/ tuneA    \czsf/ tuneA    \
-#        indata.next = 0b010001011000100100001010100000001110100010111111
-#        yield spi_tx(indata, 48)
-#        #yield spi_tx(indata, 48)
-#        for i in range(1000):
-#            yield clk_in.negedge
-#
-#        for i in range(10):
-#            yield clk_in.negedge
-#
-#        raise StopSimulation
-#
-#    return instances()
-#
-#
-#
-#
-#
-#def _test_bench_HarmonicInterface():
-#    tracer = traceSignals(bench_HarmonicInterface)
-#    sim = Simulation(tracer)
-#    sim.run()
-#
-#
 if __name__ == '__main__':
-    TestSingleHarmonic().test_spi_shift()
-    TestSingleHarmonic().test_spi_passthru()
+    #TestSingleHarmonic().test_spi_shift()
+    #TestSingleHarmonic().test_spi_passthru()
+    TestSingleHarmonic().test_spi_nco()
+
 
 

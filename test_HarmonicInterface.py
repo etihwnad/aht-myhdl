@@ -205,8 +205,8 @@ class TestSingleHarmonic:
 
 
     def make_bench_spi_nco(self, fcw):
-        # connect NCO to switches
         harmonic = HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
+            # connect NCO to switches
             nco_i, nco_q, nco_i, nco_q,
             clk_out, reset_out, scl_out, cs_out, dout,
             swAp, swAn,
@@ -294,7 +294,7 @@ class TestSingleHarmonic:
                 monitorA, monitorB, control)
 
     def test_spi_nco(self):
-        for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3]:
+        for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
             if fcw == -1:
                 fcw = randrange(2**14)
             tb = self.make_bench_spi_nco(fcw)

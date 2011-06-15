@@ -8,7 +8,9 @@ from myhdl import *
 from HarmonicInterface import HarmonicInterface
 from test_SPISlave import start, stop, sendBit, tx
 
+DEBUG = True
 
+N_DATA_BITS = 48
 PERIOD = 10
 
 
@@ -108,7 +110,6 @@ def sysclock():
     sysclk.next = not sysclk
 
 
-N_DATA_BITS = 48
 class TestSingleHarmonic:
     def sysreset(self):
         reset_in.next = 0
@@ -302,10 +303,223 @@ class TestSingleHarmonic:
             sim.run()
 
 
+
+def mkSeriesHarmonic(
+        clk_in, clk_out,
+        reset_in, reset_out,
+        scl_in, scl_out,
+        cs_in, cs_out,
+        din, dout):
+
+    class Signals: pass
+    sig = Signals()
+
+    # internal harmonic lines and outputs
+    sig.ncoI, sig.ncoQ = [Signal(intbv(0)[0]) for i in range(2)]
+
+    sig.swAn = Signal(intbv(0)[7:])
+    sig.swAp = Signal(intbv(0)[7:])
+    sig.swBn = Signal(intbv(0)[7:])
+    sig.swBp = Signal(intbv(0)[7:])
+
+    sig.cintAn, sig.zeroAn, sig.fastAn = [Signal(intbv(0)[0]) for i in range(3)]
+    sig.cintAp, sig.zeroAp, sig.fastAp = [Signal(intbv(0)[0]) for i in range(3)]
+    sig.cintBn, sig.zeroBn, sig.fastBn = [Signal(intbv(0)[0]) for i in range(3)]
+    sig.cintBp, sig.zeroBp, sig.fastBp = [Signal(intbv(0)[0]) for i in range(3)]
+
+    sig.tuneAn = Signal(intbv(0)[12:])
+    sig.tuneAp = Signal(intbv(0)[12:])
+    sig.tuneBn = Signal(intbv(0)[12:])
+    sig.tuneBp = Signal(intbv(0)[12:])
+
+    harmonic = HarmonicInterface(
+            clk_in, reset_in, scl_in, cs_in, din,
+            sig.ncoI, sig.ncoQ, sig.ncoI, sig.ncoQ,
+            clk_out, reset_out, scl_out, cs_out, dout,
+            sig.swAp, sig.swAn,
+            sig.cintAn, sig.zeroAn, sig.fastAn, sig.tuneAn,
+            sig.cintAp, sig.zeroAp, sig.fastAp, sig.tuneAp,
+            sig.swBp, sig.swBn,
+            sig.cintBn, sig.zeroBn, sig.fastBn, sig.tuneBn,
+            sig.cintBp, sig.zeroBp, sig.fastBp, sig.tuneBp)
+    return (harmonic, sig)
+
+
+class TestMultipleHarmonics:
+    @classmethod
+    def setup_class(cls):
+        cls.N_STAGES = 10
+
+        clk = clk_in = Signal(intbv(0)[0])
+        scl = scl_in = Signal(intbv(0)[0])
+        cs = cs_in = Signal(intbv(0)[0])
+        mosi = din = Signal(intbv(0)[0])
+
+        cls.sysclk = Signal(bool(0))
+        cls.reset = reset_in = Signal(intbv(0)[0])
+
+        class SPI: pass
+        spi = SPI()
+        spi.clk = cls.sysclk
+        spi.scl = scl
+        spi.cs = cs
+        spi.din = mosi
+        cls.spi = spi
+
+        cls.sysclock = cls.mksysclock()
+        #cls.spiclock = cls.mkspiclock()
+
+        #cls.stages = stages
+
+    @classmethod
+    def mksysclock(cls):
+        @always(delay(PERIOD//2))
+        def sysclock():
+            cls.sysclk.next = not cls.sysclk
+        return sysclock
+
+    def mkstages(self):
+        #create a series chain of harmonics
+        clk_in = self.spi.clk
+        scl_in = self.spi.scl
+        cs_in = self.spi.cs
+        din = self.spi.din
+        reset_in = self.reset
+
+        stages = []
+        for i in range(self.N_STAGES):
+            class Signals: pass
+            sig = Signals()
+            sig.clk_out = Signal(intbv(0)[0])
+            sig.reset_out = Signal(intbv(0)[0])
+            sig.scl_out = Signal(intbv(0)[0])
+            sig.cs_out = Signal(intbv(0)[0])
+            sig.dout = Signal(intbv(0)[0])
+
+
+            harmonic, internal = mkSeriesHarmonic(
+                    clk_in, sig.clk_out,
+                    reset_in, sig.reset_out,
+                    scl_in, sig.scl_out,
+                    cs_in, sig.cs_out,
+                    din, sig.dout)
+
+            stages.append((harmonic, internal, sig))
+
+            clk_in = sig.clk_out
+            reset_in = sig.reset_out
+            scl_in = sig.scl_out
+            cs_in = sig.cs_out
+            din = sig.dout
+        return stages
+
+    def sysreset(self):
+        self.reset.next = 0
+        yield self.sysclk.posedge
+        self.reset.next = 1
+        yield self.sysclk.posedge
+
+    def bench_series_lines(self):
+        stages = self.mkstages()
+        @instance
+        def check():
+            for i in range(2**4):
+                if DEBUG:
+                    print '--------------------------------'
+                    print 'iteration:', i
+                i = intbv(i)
+
+                #self.sysclock.next = 0
+                yield self.sysreset()
+
+                self.spi.clk.next = i[3]
+                self.spi.scl.next = i[2]
+                self.reset.next = i[1]
+                self.spi.cs.next = i[0]
+                yield self.sysclk.posedge
+                yield delay(1000)
+
+                for n in range(self.N_STAGES):
+                    if DEBUG:
+                        print
+                        print 'stage:', n
+                        print ''.join(map(bin, [
+                            self.spi.clk,
+                            self.spi.scl,
+                            self.reset,
+                            self.spi.cs]))
+                        print ''.join(map(bin, [
+                            stages[n][2].clk_out,
+                            stages[n][2].scl_out,
+                            stages[n][2].reset_out,
+                            stages[n][2].cs_out]))
+                    assert self.spi.clk == stages[n][2].clk_out
+                    assert self.spi.scl == stages[n][2].scl_out
+                    assert self.reset == stages[n][2].reset_out
+                    assert self.spi.cs == stages[n][2].cs_out
+
+            raise StopSimulation
+        return self.sysclock, [s[0] for s in stages], check
+
+    def test_series_lines(self):
+        sim = Simulation(self.bench_series_lines())
+        sim.run()
+
+
+    def bench_spi_passthru(self):
+        stages = self.mkstages()
+        @instance
+        def check():
+            print '==========================='
+            print 'spi_passthru'
+            # a batch of random inputs
+            for trial in range(10):
+                collector = intbv(0)[N_DATA_BITS:]
+                indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                #indata = intbv(-1)[N_DATA_BITS:]
+                print bin(indata)
+
+                self.spi.scl.next = 0
+                self.spi.cs.next = 1
+                yield self.sysreset()
+                print 'did reset'
+
+                yield tx(self.spi, indata)
+                print 'sent txdata0'
+
+                #shift block to last instance
+                for i in range(self.N_STAGES - 1):
+                    yield tx(self.spi, intbv(0)[N_DATA_BITS:])
+                    print 'txdata'
+
+                #for n in range(self.N_STAGES):
+                    #print bin(stages[n][2].dout)
+
+                # shift out data
+                yield start(self.spi)
+                for i in downrange(N_DATA_BITS):
+                    bit = collector[i] = stages[-1][2].dout
+                    #print i, bin(bit)
+                    yield sendBit(self.spi, 0)
+                yield stop(self.spi)
+                assert collector == indata
+            raise StopSimulation
+        #return self.sysclock, [s[0] for s in stages], check
+        return self.sysclock, [s[0] for s in stages], check
+
+    def test_spi_passthru(self):
+        sim = Simulation(self.bench_spi_passthru())
+        sim.run()
+
+
 if __name__ == '__main__':
     #TestSingleHarmonic().test_spi_shift()
     #TestSingleHarmonic().test_spi_passthru()
-    TestSingleHarmonic().test_spi_nco()
+    #TestSingleHarmonic().test_spi_nco()
+    multiple = TestMultipleHarmonics()
+    multiple.setup_class()
+    multiple.test_series_lines()
+    multiple.test_spi_passthru()
 
 
 

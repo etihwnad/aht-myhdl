@@ -27,12 +27,14 @@ def SPISlave(N, reset, scl, cs, din, dout, data):
     def InputRegister():
         if reset == ACTIVE_LOW:
             reg.next = 0
-        elif cs == ACTIVE_LOW:
+
+        if cs == ACTIVE_LOW:
             #sample on sck rising edge
             if scl == ACTIVE_HIGH:
                 sample.next = din
             #shift on falling edge
-            elif scl == ACTIVE_LOW:
+            #elif scl == ACTIVE_LOW:
+            else:
                 reg.next[N:1] = reg[N-1:]
                 reg.next[0] = sample
 

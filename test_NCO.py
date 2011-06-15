@@ -124,8 +124,8 @@ parameter False=0;
 
 
 if __name__ == '__main__':
-    #convert()
+    convert()
     #test_bench_NCO()
-    test_period()
+    #test_period()
 
 

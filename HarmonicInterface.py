@@ -127,17 +127,17 @@ def convert():
     tuneBn = Signal(intbv(0)[12:])
     tuneBp = Signal(intbv(0)[12:])
 
-    #toVerilog(
-        #HarmonicInterface,
-        #clk_in, reset_in, scl_in, cs_in, din,
-        #nco_i, nco_q, multA, multB,
-        #clk_out, reset_out, scl_out, cs_out, dout,
-        #swAp, swAn,
-        #cintAn, zeroAn, fastAn, tuneAn,
-        #cintAp, zeroAp, fastAp, tuneAp,
-        #swBp, swBn,
-        #cintBn, zeroBn, fastBn, tuneBn,
-        #cintBp, zeroBp, fastBp, tuneBp)
+    toVerilog(
+        HarmonicInterface,
+        clk_in, reset_in, scl_in, cs_in, din,
+        nco_i, nco_q, multA, multB,
+        clk_out, reset_out, scl_out, cs_out, dout,
+        swAp, swAn,
+        cintAn, zeroAn, fastAn, tuneAn,
+        cintAp, zeroAp, fastAp, tuneAp,
+        swBp, swBn,
+        cintBn, zeroBn, fastBn, tuneBn,
+        cintBp, zeroBp, fastBp, tuneBp)
 
-#convert()
+convert()
 

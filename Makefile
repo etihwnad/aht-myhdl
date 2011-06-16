@@ -6,6 +6,8 @@ verilog=$(modules:.py=.v)
 tests=$(foreach mod, $(modules), test_$(mod:.py=.test))
 vcd=$(foreach mod, $(modules), bench_$(mod:.py=.vcd))
 
+PYTHON=python
+PYTEST=pypy -m pytest
 
 all: test hdl
 	@echo $(modules)
@@ -18,13 +20,13 @@ install: $(verilog)
 	scp $(verilog) dwhite@eel.unl.edu:sun-env/8rf/atoi_digital/RTL/
 
 bench_%.vcd: test_%.py %.py
-	python $<
+	$(PYTHON) $<
 
-test_%.test: test_%.py
-	py.test --resultlog=$@ $<
+test_%.test: test_%.py %.py
+	$(PYTEST) --resultlog=$@ $<
 
 %.v : %.py test_%.test
-	python $<
+	$(PYTHON) $<
 
 clean:
 	rm -f *.v

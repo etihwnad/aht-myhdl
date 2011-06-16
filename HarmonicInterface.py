@@ -139,5 +139,6 @@ def convert():
         cintBn, zeroBn, fastBn, tuneBn,
         cintBp, zeroBp, fastBp, tuneBp)
 
-convert()
+if __name__ == '__main__':
+    convert()
 

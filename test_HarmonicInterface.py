@@ -16,8 +16,12 @@ if COSIM is None or COSIM == '0':
 else:
     COSIM = True
 
+SIMULATOR = 'iverilog'
+#SIMULATOR = 'cver'
+
+
 N_DATA_BITS = 48
-PERIOD = 10
+PERIOD = 1000
 
 
 # system clock, e.g. NS430 cpu clock
@@ -62,18 +66,35 @@ def HarmonicInterface(
         cintBp, zeroBp, fastBp, tuneBp,
         cosim=False):
     if cosim:
-        cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
-        cmd0 = "cp tb_HarmonicInterface.v tb_HarmonicInterface.vnet"
-        cmd1 = "iverilog -gspecify -o HarmonicInterface \
-                ibm13rfrvt.v \
-                HarmonicInterface.vnet \
-                tb_HarmonicInterface.vnet"
-                    
-        print os.system(cmd0)
-        print os.system(cmd1)
+        if SIMULATOR == 'iverilog':
+            runcmd = "vvp -m ./myhdl.vpi.%s HarmonicInterface" % \
+                    os.getenv('HOSTNAME')
+            cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
+            #cmd0 = "cp tb_HarmonicInterface.v tb_HarmonicInterface.vnet"
+            cmd1 = "iverilog -gspecify -o HarmonicInterface \
+                    ibm13rfrvt.v \
+                    HarmonicInterface.vnet \
+                    tb_HarmonicInterface.vnet"
+                        
+            print os.system(cmd0)
+            print os.system(cmd1)
+
+        elif SIMULATOR == 'cver':
+                    #+change_port_type \
+                    #+sdf_annotate HarmonicInterface.sdf+tb_HarmonicInterface.dut \
+            runcmd = "cver -l HarmonicInterface.cver.log +typdelays \
+                    +loadvpi=./myhdl.cver.twain.so:vpi_compat_bootstrap \
+                    -informs \
+                    +printstats \
+                    -v ibm13rfrvt.v \
+                    HarmonicInterface.vnet \
+                    tb_HarmonicInterface.vnet"
+            cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
+            print os.system(cmd0)
+
+        print runcmd
         return Cosimulation(
-                "vvp -m ./myhdl.vpi.%s HarmonicInterface" % \
-                    os.getenv('HOSTNAME'),
+                runcmd,
                 clk_in=clk_in,
                 reset_in=reset_in,
                 scl_in=scl_in,
@@ -200,9 +221,10 @@ class TestSingleHarmonic:
         @instance
         def check():
             # a batch of random inputs
-            for trial in range(10):
+            for trial in range(1):
                 collector = intbv(0)[N_DATA_BITS:]
-                indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                #indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                indata = intbv(0xdeadbeef0368)[N_DATA_BITS:]
 
                 yield self.sysreset()
 
@@ -257,6 +279,7 @@ class TestSingleHarmonic:
         def check():
             for trial in range(10):
                 indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                #indata = intbv(0xdeadbeef0368)[N_DATA_BITS:]
                 invec = HarmonicVector(indata)
                 yield self.sysreset()
                 yield tx(spi, indata)
@@ -281,8 +304,10 @@ class TestSingleHarmonic:
         return sysclock, harmonic, check
             
     def test_spi_tune(self):
-        sim = Simulation(self.bench_spi_tune())
+        tb = self.bench_spi_tune()
+        sim = Simulation(tb)
         sim.run()
+        del tb
 
 
     def make_bench_spi_nco(self, fcw):
@@ -346,7 +371,7 @@ class TestSingleHarmonic:
             yield self.sysreset()
             invec = HarmonicVector(0)
             invec.cal = 0 #no calibration
-            invec.rst = 1
+            invec.rst = 0
             invec.fcw = fcw
             counter.next = 0
             print 'indata:', bin(invec.data, 48)
@@ -363,7 +388,7 @@ class TestSingleHarmonic:
             for i in range(GRR):
                 yield clk_in.negedge
 
-            for i in range(int(fcw2period(fcw, 16))):
+            for i in range(2*int(fcw2period(fcw, 16))):
                 if foundA and foundB:
                     break
                 yield clk_in.negedge
@@ -376,12 +401,15 @@ class TestSingleHarmonic:
                 monitorA, monitorB, control)
 
     def test_spi_nco(self):
-        for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
+        #for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
+        #for fcw in [2**14-1, 2**13-4, 2**12, 2**8]:
+        for fcw in [2**8]:
             if fcw == -1:
                 fcw = randrange(2**14)
             tb = self.make_bench_spi_nco(fcw)
             sim = Simulation(tb)
             sim.run()
+            del tb
 
 
 
@@ -423,7 +451,7 @@ def mkSeriesHarmonic(
             sig.swBp, sig.swBn,
             sig.cintBn, sig.zeroBn, sig.fastBn, sig.tuneBn,
             sig.cintBp, sig.zeroBp, sig.fastBp, sig.tuneBp,
-            cosim=COSIM)
+            cosim=False) # only make ONE Cosimulator instance, top level
     return (harmonic, sig)
 
 
@@ -544,7 +572,8 @@ class TestMultipleHarmonics:
         return self.sysclock, [s[0] for s in stages], check
 
     def test_series_lines(self):
-        sim = Simulation(self.bench_series_lines())
+        tb = self.bench_series_lines()
+        sim = Simulation(tb)
         sim.run()
 
 
@@ -558,6 +587,7 @@ class TestMultipleHarmonics:
             for trial in range(10):
                 collector = intbv(0)[N_DATA_BITS:]
                 indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                #indata = intbv(0xdeadbeef0368)[N_DATA_BITS:]
                 #indata = intbv(-1)[N_DATA_BITS:]
                 print bin(indata)
 
@@ -590,14 +620,15 @@ class TestMultipleHarmonics:
         return self.sysclock, [s[0] for s in stages], check
 
     def test_spi_passthru(self):
-        sim = Simulation(self.bench_spi_passthru())
+        tb = self.bench_spi_passthru()
+        sim = Simulation(tb)
         sim.run()
 
 
 if __name__ == '__main__':
     TestSingleHarmonic().test_spi_shift()
-    #TestSingleHarmonic().test_spi_passthru()
-    #TestSingleHarmonic().test_spi_nco()
+    TestSingleHarmonic().test_spi_passthru()
+    TestSingleHarmonic().test_spi_nco()
 
     #multiple = TestMultipleHarmonics()
     #multiple.setup_class()

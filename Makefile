@@ -18,6 +18,8 @@ hdl: $(verilog)
 
 install: $(verilog)
 	scp $(verilog) dwhite@eel.unl.edu:sun-env/8rf/atoi_digital/RTL/
+	scp tb_HarmonicInterface.v{,net} dwhite@eel.unl.edu:sun-env/8rf/atoi_digital/RTL/
+
 
 bench_%.vcd: test_%.py %.py
 	$(PYTHON) $<

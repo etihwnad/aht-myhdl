@@ -221,10 +221,10 @@ class TestSingleHarmonic:
         @instance
         def check():
             # a batch of random inputs
-            for trial in range(1):
+            for trial in range(10):
                 collector = intbv(0)[N_DATA_BITS:]
-                #indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
-                indata = intbv(0xdeadbeef0368)[N_DATA_BITS:]
+                indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
+                #indata = intbv(0xdeadbeef0368)[N_DATA_BITS:]
 
                 yield self.sysreset()
 
@@ -401,9 +401,9 @@ class TestSingleHarmonic:
                 monitorA, monitorB, control)
 
     def test_spi_nco(self):
-        #for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
+        for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
         #for fcw in [2**14-1, 2**13-4, 2**12, 2**8]:
-        for fcw in [2**8]:
+        #for fcw in [2**8]:
             if fcw == -1:
                 fcw = randrange(2**14)
             tb = self.make_bench_spi_nco(fcw)

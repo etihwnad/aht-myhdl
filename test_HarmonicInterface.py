@@ -5,10 +5,16 @@ from math import ceil, floor
 
 from myhdl import *
 
-from HarmonicInterface import HarmonicInterface
+from HarmonicInterface import HarmonicInterface as _HarmonicInterface
 from test_SPISlave import start, stop, sendBit, tx
 
 DEBUG = True
+
+COSIM = os.getenv('MYHDL_COSIM')
+if COSIM is None or COSIM == '0':
+    COSIM = False
+else:
+    COSIM = True
 
 N_DATA_BITS = 48
 PERIOD = 10
@@ -43,6 +49,78 @@ tuneAp = Signal(intbv(0)[12:])
 tuneBn = Signal(intbv(0)[12:])
 tuneBp = Signal(intbv(0)[12:])
 
+
+def HarmonicInterface(
+        clk_in, reset_in, scl_in, cs_in, din,
+        nco_i, nco_q, multA, multB,
+        clk_out, reset_out, scl_out, cs_out, dout,
+        swAp, swAn,
+        cintAn, zeroAn, fastAn, tuneAn,
+        cintAp, zeroAp, fastAp, tuneAp,
+        swBp, swBn,
+        cintBn, zeroBn, fastBn, tuneBn,
+        cintBp, zeroBp, fastBp, tuneBp,
+        cosim=False):
+    if cosim:
+        cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
+        cmd0 = "cp tb_HarmonicInterface.v tb_HarmonicInterface.vnet"
+        cmd1 = "iverilog -gspecify -o HarmonicInterface \
+                ibm13rfrvt.v \
+                HarmonicInterface.vnet \
+                tb_HarmonicInterface.vnet"
+                    
+        print os.system(cmd0)
+        print os.system(cmd1)
+        return Cosimulation(
+                "vvp -m ./myhdl.vpi.%s HarmonicInterface" % \
+                    os.getenv('HOSTNAME'),
+                clk_in=clk_in,
+                reset_in=reset_in,
+                scl_in=scl_in,
+                cs_in=cs_in,
+                din=din,
+                nco_i=nco_i,
+                nco_q=nco_q,
+                multA=multA,
+                multB=multB,
+                clk_out=clk_out,
+                reset_out=reset_out,
+                scl_out=scl_out,
+                cs_out=cs_out,
+                dout=dout,
+                swAp=swAp,
+                swAn=swAn,
+                cintAn=cintAn,
+                zeroAn=zeroAn,
+                fastAn=fastAn,
+                tuneAn=tuneAn,
+                cintAp=cintAp,
+                zeroAp=zeroAp,
+                fastAp=fastAp,
+                tuneAp=tuneAp,
+                swBp=swBp,
+                swBn=swBn,
+                cintBn=cintBn,
+                zeroBn=zeroBn,
+                fastBn=fastBn,
+                tuneBn=tuneBn,
+                cintBp=cintBp,
+                zeroBp=zeroBp,
+                fastBp=fastBp,
+                tuneBp=tuneBp)
+
+                
+    else:
+        return  _HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
+            nco_i, nco_q, multA, multB,
+            clk_out, reset_out, scl_out, cs_out, dout,
+            swAp, swAn,
+            cintAn, zeroAn, fastAn, tuneAn,
+            cintAp, zeroAp, fastAp, tuneAp,
+            swBp, swBn,
+            cintBn, zeroBn, fastBn, tuneBn,
+            cintBp, zeroBp, fastBp, tuneBp)
+
 def gcd(a, b):
     while b:
         a, b = b, a % b
@@ -61,7 +139,7 @@ def mkharmonic():
         cintAp, zeroAp, fastAp, tuneAp,
         swBp, swBn,
         cintBn, zeroBn, fastBn, tuneBn,
-        cintBp, zeroBp, fastBp, tuneBp)
+        cintBp, zeroBp, fastBp, tuneBp, cosim=COSIM)
 
 class SPI: pass
 spi = SPI()
@@ -136,6 +214,8 @@ class TestSingleHarmonic:
                     collector[i] = dout
                     yield sendBit(spi, 0)
                 yield stop(spi)
+                print bin(indata, 48)
+                print bin(collector, 48)
                 assert collector == indata
             raise StopSimulation
         return sysclock, harmonic, check
@@ -215,7 +295,8 @@ class TestSingleHarmonic:
             cintAp, zeroAp, fastAp, tuneAp,
             swBp, swBn,
             cintBn, zeroBn, fastBn, tuneBn,
-            cintBp, zeroBp, fastBp, tuneBp)
+            cintBp, zeroBp, fastBp, tuneBp,
+            cosim=COSIM)
 
         a,b,c,d,e,f,g = downrange(7)
 
@@ -341,7 +422,8 @@ def mkSeriesHarmonic(
             sig.cintAp, sig.zeroAp, sig.fastAp, sig.tuneAp,
             sig.swBp, sig.swBn,
             sig.cintBn, sig.zeroBn, sig.fastBn, sig.tuneBn,
-            sig.cintBp, sig.zeroBp, sig.fastBp, sig.tuneBp)
+            sig.cintBp, sig.zeroBp, sig.fastBp, sig.tuneBp,
+            cosim=COSIM)
     return (harmonic, sig)
 
 
@@ -513,13 +595,14 @@ class TestMultipleHarmonics:
 
 
 if __name__ == '__main__':
-    #TestSingleHarmonic().test_spi_shift()
+    TestSingleHarmonic().test_spi_shift()
     #TestSingleHarmonic().test_spi_passthru()
     #TestSingleHarmonic().test_spi_nco()
-    multiple = TestMultipleHarmonics()
-    multiple.setup_class()
-    multiple.test_series_lines()
-    multiple.test_spi_passthru()
+
+    #multiple = TestMultipleHarmonics()
+    #multiple.setup_class()
+    #multiple.test_series_lines()
+    #multiple.test_spi_passthru()
 
 
 

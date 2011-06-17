@@ -85,10 +85,10 @@ def HarmonicInterface(
             print os.system(cmd1)
 
         elif SIMULATOR == 'cver':
-                    #+change_port_type \
                     #+sdf_annotate HarmonicInterface.sdf+tb_HarmonicInterface.dut \
             runcmd = "cver -l HarmonicInterface.cver.log +typdelays \
                     +loadvpi=./myhdl.cver.twain.so:vpi_compat_bootstrap \
+                    +change_port_type \
                     -informs \
                     +printstats \
                     -v ibm13rfrvt.v \

@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module tb_HarmonicInterface;
 
 reg clk_in;

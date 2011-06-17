@@ -102,7 +102,7 @@ def HarmonicInterface(
                     +loadvpi=./myhdl.verilog.doppler:myhdl_register \
                     -v ibm13rfrvt.v \
                     HarmonicInterface.vnet \
-                    tb_HarmonicInterface.v"
+                    tb_HarmonicInterface.vnet"
             #cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
             #print os.system(cmd0)
         else:
@@ -259,8 +259,10 @@ class TestSingleHarmonic:
         return sysclock, harmonic, check
 
     def test_spi_shift(self):
-        sim = Simulation(self.bench_spi_shift())
+        tb = self.bench_spi_shift()
+        sim = Simulation(tb)
         sim.run()
+        del tb
 
     def bench_spi_passthru(self):
         harmonic = mkharmonic()
@@ -286,8 +288,10 @@ class TestSingleHarmonic:
         return sysclock, harmonic, check
 
     def test_spi_passthru(self):
-        sim = Simulation(self.bench_spi_passthru())
+        tb = self.bench_spi_passthru()
+        sim = Simulation(tb)
         sim.run()
+        del tb
 
     def bench_spi_tune(self):
         harmonic = mkharmonic()

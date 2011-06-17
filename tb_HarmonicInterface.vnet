@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module tb_HarmonicInterface;
 
 reg clk_in;
@@ -114,6 +115,6 @@ HarmonicInterface dut(
 );
 
 initial begin
-    $sdf_annotate("HarmonicInterface.sdf", dut);
-        end
+$sdf_annotate("HarmonicInterface.sdf", dut);
+end
 endmodule

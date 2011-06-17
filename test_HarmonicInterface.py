@@ -421,9 +421,9 @@ class TestSingleHarmonic:
                 monitorA, monitorB, control)
 
     def test_spi_nco(self):
-        for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
+        #for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
         #for fcw in [2**14-1, 2**13-4, 2**12, 2**8]:
-        #for fcw in [2**8]:
+        for fcw in [2**8]:
             if fcw == -1:
                 fcw = randrange(2**14)
             tb = self.make_bench_spi_nco(fcw)

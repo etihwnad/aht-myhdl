@@ -19,20 +19,18 @@ else:
 SIMULATOR = os.getenv('MYHDL_SIMULATOR')
 if COSIM and not SIMULATOR:
     SIMULATOR = 'iverilog'
-    #SIMULATOR = 'cver'
-    print 'using default cosimulator:', SIMULATOR
+    print 'INFO: using default cosimulator:', SIMULATOR
 
 if COSIM:
     print '*** Cosimulation with %s ***' % SIMULATOR
 
 N_DATA_BITS = 48
-PERIOD = 1000
+PERIOD = 10
 
 
 # system clock, e.g. NS430 cpu clock
 sysclk = Signal(bool(0))
 
-counter = Signal(intbv(0))
 
 # harmonic digital lines
 clk_in, reset_in, scl_in, cs_in = [Signal(intbv(0)[0]) for i in range(4)]
@@ -146,7 +144,6 @@ def HarmonicInterface(
                 fastBp=fastBp,
                 tuneBp=tuneBp)
 
-                
     else:
         return  _HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
             nco_i, nco_q, multA, multB,
@@ -348,10 +345,15 @@ class TestSingleHarmonic:
         swAb = swAn(b)
         swBb = swBn(b)
     
-        @always(delay(5*PERIOD))
+        # NCO increment (arbitrarily) set to non-harmonic relation
+        # to system clock, but forced slower
+        NCO_PERIOD = 2*211
+        assert NCO_PERIOD > PERIOD
+        @always(delay(NCO_PERIOD//2))
         def ncoclock():
             clk_in.next = not clk_in
 
+        counter = Signal(intbv(0))
         @always(clk_in.posedge)
         def cnt():
             counter.next = counter + 1
@@ -387,15 +389,13 @@ class TestSingleHarmonic:
 
         @instance
         def control():
-            #lastB.next = 0
             yield self.sysreset()
             invec = HarmonicVector(0)
             invec.cal = 0 #no calibration
-            invec.rst = 0
+            invec.rst = 0 #zero NCO
             invec.fcw = fcw
             counter.next = 0
             print 'indata:', bin(invec.data, 48)
-            #yield self.sysreset()
             yield tx(spi, invec.data)
             invec.rst = 1 #run the NCO
             yield tx(spi, invec.data)
@@ -408,6 +408,7 @@ class TestSingleHarmonic:
             for i in range(GRR):
                 yield clk_in.negedge
 
+            # collect the last edges
             for i in range(2*int(fcw2period(fcw, 16))):
                 if foundA and foundB:
                     break
@@ -423,7 +424,7 @@ class TestSingleHarmonic:
     def test_spi_nco(self):
         #for fcw in [2**14-1, 2**13-4, 2**12, 2**8] +  [-1]*3:
         #for fcw in [2**14-1, 2**13-4, 2**12, 2**8]:
-        for fcw in [2**8]:
+        for fcw in [2**8, 2**12-1]:
             if fcw == -1:
                 fcw = randrange(2**14)
             tb = self.make_bench_spi_nco(fcw)
@@ -497,9 +498,6 @@ class TestMultipleHarmonics:
         cls.spi = spi
 
         cls.sysclock = cls.mksysclock()
-        #cls.spiclock = cls.mkspiclock()
-
-        #cls.stages = stages
 
     @classmethod
     def mksysclock(cls):
@@ -559,7 +557,6 @@ class TestMultipleHarmonics:
                     print 'iteration:', i
                 i = intbv(i)
 
-                #self.sysclock.next = 0
                 yield self.sysreset()
 
                 self.spi.clk.next = i[3]
@@ -608,7 +605,6 @@ class TestMultipleHarmonics:
                 collector = intbv(0)[N_DATA_BITS:]
                 indata = intbv(randrange(2**N_DATA_BITS))[N_DATA_BITS:]
                 #indata = intbv(0xdeadbeef0368)[N_DATA_BITS:]
-                #indata = intbv(-1)[N_DATA_BITS:]
                 print bin(indata)
 
                 self.spi.scl.next = 0
@@ -624,19 +620,14 @@ class TestMultipleHarmonics:
                     yield tx(self.spi, intbv(0)[N_DATA_BITS:])
                     print 'txdata'
 
-                #for n in range(self.N_STAGES):
-                    #print bin(stages[n][2].dout)
-
                 # shift out data
                 yield start(self.spi)
                 for i in downrange(N_DATA_BITS):
                     bit = collector[i] = stages[-1][2].dout
-                    #print i, bin(bit)
                     yield sendBit(self.spi, 0)
                 yield stop(self.spi)
                 assert collector == indata
             raise StopSimulation
-        #return self.sysclock, [s[0] for s in stages], check
         return self.sysclock, [s[0] for s in stages], check
 
     def test_spi_passthru(self):

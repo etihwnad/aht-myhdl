@@ -16,9 +16,13 @@ if COSIM is None or COSIM == '0':
 else:
     COSIM = True
 
-SIMULATOR = 'iverilog'
-#SIMULATOR = 'cver'
+SIMULATOR = os.getenv('MYHDL_SIMULATOR')
+if COSIM and not SIMULATOR:
+    SIMULATOR = 'iverilog'
+    #SIMULATOR = 'cver'
+    print 'using default cosimulator:', SIMULATOR
 
+print COSIM, SIMULATOR
 
 N_DATA_BITS = 48
 PERIOD = 1000
@@ -91,6 +95,16 @@ def HarmonicInterface(
                     tb_HarmonicInterface.vnet"
             cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
             print os.system(cmd0)
+        elif SIMULATOR == 'verilog':
+            runcmd = "verilog \
+                    +loadvpi=./myhdl.verilog.doppler:myhdl_register \
+                    -v ibm13rfrvt.v \
+                    HarmonicInterface.vnet \
+                    tb_HarmonicInterface.v"
+            #cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
+            #print os.system(cmd0)
+        else:
+            raise NameError('Unknown simulator: %s' % SIMULATOR)
 
         print runcmd
         return Cosimulation(

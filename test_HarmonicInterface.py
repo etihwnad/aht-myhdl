@@ -22,7 +22,8 @@ if COSIM and not SIMULATOR:
     #SIMULATOR = 'cver'
     print 'using default cosimulator:', SIMULATOR
 
-print COSIM, SIMULATOR
+if COSIM:
+    print '*** Cosimulation with %s ***' % SIMULATOR
 
 N_DATA_BITS = 48
 PERIOD = 1000
@@ -71,7 +72,7 @@ def HarmonicInterface(
         cosim=False):
     if cosim:
         if SIMULATOR == 'iverilog':
-            runcmd = "vvp -m ./myhdl.vpi.%s HarmonicInterface" % \
+            runcmd = "vvp -m ./myhdl.vpi.%s -l HarmonicInterface.iverilog.log HarmonicInterface" % \
                     os.getenv('HOSTNAME')
             cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
             #cmd0 = "cp tb_HarmonicInterface.v tb_HarmonicInterface.vnet"
@@ -97,6 +98,7 @@ def HarmonicInterface(
             print os.system(cmd0)
         elif SIMULATOR == 'verilog':
             runcmd = "verilog \
+                    -l HarmonicInterface.vxl.log \
                     +loadvpi=./myhdl.verilog.doppler:myhdl_register \
                     -v ibm13rfrvt.v \
                     HarmonicInterface.vnet \

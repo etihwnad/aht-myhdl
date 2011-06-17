@@ -24,7 +24,15 @@ def NCO(N, clk, reset, rst, fcw, outi, outq):
     MSB = N-1
 
     phase = Signal(intbv(0)[N:])
+    phase_delay = Signal(intbv(0)[N:])
     x = Signal(intbv(0)[N:])
+
+    @always(clk.negedge)
+    def loopdelay():
+        if reset == ACTIVE_LOW:
+            phase_delay.next = 0
+        else:
+            phase_delay.next = phase
 
     @always(clk.posedge, reset.negedge)
     def ncoLogic():
@@ -37,8 +45,8 @@ def NCO(N, clk, reset, rst, fcw, outi, outq):
             outi.next = 0
             outq.next = 0
         else:
-            phase.next = (phase + fcw) % acc_max
-            tmp = (phase + offset) % acc_max
+            phase.next = (phase_delay + fcw) % acc_max
+            tmp = (phase_delay + offset) % acc_max
             outi.next = intbv(tmp)[MSB]
             outq.next = phase[MSB]
 

@@ -36,3 +36,12 @@ def BufferCtl(mode, sw):
     return instances()
 
 
+def convert():
+    mode = Signal(intbv(0)[3:])
+    sw = Signal(intbv(0)[4:])
+
+    toVerilog(BufferCtl, mode, sw)
+
+
+if __name__ == '__main__':
+    convert()

@@ -5,7 +5,7 @@ from math import ceil, log
 from myhdl import *
 
 
-def AnalogMuxCtl(N, default): #, sel, swN, swP):
+def AnalogMuxCtl(N, default, sel, swN, swP):
     """TX gate multiplexer control
     
     Construction:
@@ -23,38 +23,40 @@ def AnalogMuxCtl(N, default): #, sel, swN, swP):
     Nbits = int(ceil(log(N, 2)))
     SELECTOR = [2**i for i in range(N)]
     
-    # completely fill in unused cases with default
     #SELECTOR.append(int(default))
+    # explicitly fill in unused cases with default value
     for i in range(N, 2**Nbits):
         SELECTOR.append(int(default))
 
     SELECTOR = tuple(SELECTOR)
 
-    def muxCtl(sel, swN, swP):
-        x = Signal(intbv(0)[N:])
-        @always_comb
-        def logic():
-            x.next = SELECTOR[sel]
+    #def muxCtl(sel, swN, swP):
+    x = Signal(intbv(0)[N:])
 
-        @always_comb
-        def outputs():
-            swN.next = x
-            swP.next = ~x
+    @always_comb
+    def logic():
+        x.next = SELECTOR[sel]
 
-        return instances()
-    return muxCtl
+    @always_comb
+    def outputs():
+        swN.next = x
+        swP.next = ~x
+
+    return instances()
+    #return muxCtl
 
 
 def convert():
-    N = 33
+    N = 48
     Nbits = ceil(log(N, 2))
     default = intbv(0)[Nbits:]
-    mux = AnalogMuxCtl(N, default)
 
     sel = Signal(intbv(0)[Nbits:])
     swN = Signal(intbv(0)[N:])
     swP = Signal(intbv(0)[N:])
 
-    toVerilog(mux, sel, swN, swP)
+    toVerilog(AnalogMuxCtl, N, default, sel, swN, swP)
 
-convert()
+if __name__ == '__main__':
+    convert()
+

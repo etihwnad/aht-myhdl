@@ -28,7 +28,7 @@ def test_oneHot():
     sel = Signal(intbv(0)[Nbits:])
     swN = Signal(intbv(0)[N:])
     swP = Signal(intbv(0)[N:])
-    mux = AnalogMuxCtl(N, default)(sel, swN, swP)
+    mux = AnalogMuxCtl(N, default, sel, swN, swP)
 
     def test():
         @instance

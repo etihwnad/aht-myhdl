@@ -7,7 +7,7 @@ tests=$(foreach mod, $(modules), test_$(mod:.py=.test))
 vcd=$(foreach mod, $(modules), bench_$(mod:.py=.vcd))
 
 PYTHON=python
-PYTEST=pypy -m pytest
+PY_TEST=pypy -m pytest
 
 all: test hdl
 	@echo $(modules)
@@ -25,7 +25,7 @@ bench_%.vcd: test_%.py %.py
 	$(PYTHON) $<
 
 test_%.test: test_%.py %.py
-	$(PYTEST) --resultlog=$@ $<
+	$(PY_TEST) --resultlog=$@ $<
 
 %.v : %.py test_%.test
 	$(PYTHON) $<

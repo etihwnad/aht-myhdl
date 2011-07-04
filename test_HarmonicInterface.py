@@ -75,7 +75,7 @@ def HarmonicInterface(
             cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
             #cmd0 = "cp tb_HarmonicInterface.v tb_HarmonicInterface.vnet"
             cmd1 = "iverilog -gspecify -o HarmonicInterface \
-                    ibm13rfrvt.v \
+                    ibm13rfrvt.verilog \
                     HarmonicInterface.vnet \
                     tb_HarmonicInterface.vnet"
                         
@@ -89,7 +89,7 @@ def HarmonicInterface(
                     +change_port_type \
                     -informs \
                     +printstats \
-                    -v ibm13rfrvt.v \
+                    -v ibm13rfrvt.verilog \
                     HarmonicInterface.vnet \
                     tb_HarmonicInterface.vnet"
             cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"
@@ -98,7 +98,7 @@ def HarmonicInterface(
             runcmd = "verilog \
                     -l HarmonicInterface.vxl.log \
                     +loadvpi=./myhdl.verilog.doppler:myhdl_register \
-                    -v ibm13rfrvt.v \
+                    -v ibm13rfrvt.verilog \
                     HarmonicInterface.vnet \
                     tb_HarmonicInterface.vnet"
             #cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"HarmonicInterface.sdf\", dut);\n        end\nendmodule/' < tb_HarmonicInterface.v > tb_HarmonicInterface.vnet"

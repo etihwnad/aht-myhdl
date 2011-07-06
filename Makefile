@@ -1,7 +1,9 @@
 
 
-modules=HarmonicInterface.py
-#modules=$(shell ls *.py | grep -v '^test_')
+# Top-level modules
+#   other files are support sub-modules
+modules=HarmonicInterface.py Chain0Ctl.py
+
 verilog=$(modules:.py=.v)
 tests=$(foreach mod, $(modules), test_$(mod:.py=.test))
 vcd=$(foreach mod, $(modules), bench_$(mod:.py=.vcd))

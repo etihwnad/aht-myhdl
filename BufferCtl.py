@@ -22,10 +22,19 @@ def BufferCtl(mode, sw):
     d       - inB-out
     """
 
+    # mode[2] is unused, don't care
+    # only mode[1:0] used
     MODE_SWITCHES = (
             0b1010, #mux cmp
+            0b1010, #mux cmp
+
             0b1001, #mux buff
+            0b1001, #mux buff
+
             0b0110, #tune fast
+            0b0110, #tune fast
+
+            0b0101, #tune slow
             0b0101, #tune slow
             )
 

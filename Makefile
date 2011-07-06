@@ -1,4 +1,4 @@
-
+SHELL=/bin/bash
 
 # Top-level modules
 #   other files are support sub-modules
@@ -19,8 +19,9 @@ test: $(tests)
 hdl: $(verilog)
 
 install: $(verilog)
-	scp $(verilog) dwhite@eel.unl.edu:sun-env/8rf/atoi_digital/RTL/
-	scp tb_HarmonicInterface.v{,net} dwhite@eel.unl.edu:sun-env/8rf/atoi_digital/RTL/
+	scp $(verilog) \
+	    tb_HarmonicInterface.{v,vnet} \
+	    dwhite@eel.unl.edu:sun-env/8rf/atoi_digital/RTL/
 
 
 bench_%.vcd: test_%.py %.py

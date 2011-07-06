@@ -50,8 +50,6 @@ def HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din,
     fcw = cdata(46,32)
 
     # NCO
-    mA = Signal(intbv(0)[0])
-    mB = Signal(intbv(0)[0])
     nco = NCO(N, clk_in, reset_in, rst, fcw, nco_i, nco_q)
 
     # Channels

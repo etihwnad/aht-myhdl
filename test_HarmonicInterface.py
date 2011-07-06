@@ -246,8 +246,8 @@ class TestSingleHarmonic:
                 # shift out data
                 yield start(spi)
                 for i in downrange(N_DATA_BITS):
-                    collector[i] = dout
                     yield sendBit(spi, 0)
+                    collector[i] = dout
                 yield stop(spi)
                 print bin(indata, 48)
                 print bin(collector, 48)
@@ -623,8 +623,8 @@ class TestMultipleHarmonics:
                 # shift out data
                 yield start(self.spi)
                 for i in downrange(N_DATA_BITS):
-                    bit = collector[i] = stages[-1][2].dout
                     yield sendBit(self.spi, 0)
+                    bit = collector[i] = stages[-1][2].dout
                 yield stop(self.spi)
                 assert collector == indata
             raise StopSimulation

@@ -14,15 +14,15 @@ def start(spi):
     yield spi.clk.posedge
 
 def sendBit(spi, b):
+    spi.scl.next = 0
     spi.din.next = b
     yield spi.clk.posedge
     spi.scl.next = 1
     yield spi.clk.posedge
-    spi.scl.next = 0
-    yield spi.clk.posedge
-
 
 def stop(spi):
+    spi.scl.next = 0
+    yield spi.clk.posedge
     spi.cs.next = 1
     yield spi.clk.posedge
 
@@ -66,20 +66,27 @@ class TestShiftRegister:
         # feed some random input words
         @instance
         def tester():
-            collector = intbv(0)[N:]
+            spi.cs.next = 1
+            reset.next = 1
             for iteration in range(10):
+                collector = intbv(0)[N:]
+                reset.next = 0
                 indata.next = intbv(random.randrange(2**32))[N:]
+                yield clk.posedge
+
                 reset.next = 1
-                yield clk.negedge
+                yield clk.posedge
+
                 yield tx(spi, indata)
                 assert data == indata
 
                 # shift out data
                 yield start(spi)
                 for i in downrange(N):
-                    collector[i] = dout
                     yield sendBit(spi, 0)
+                    collector[i] = dout
                 yield stop(spi)
+
                 assert collector == indata
 
             raise StopSimulation
@@ -139,16 +146,16 @@ class TestShiftRegister:
             collector = intbv(0)[N_SERIES*N:]
             assert len(indata) == len(collector)
             for iteration in range(10):
-                indata.next = random.randrange(2**64)
+                indata.next = random.randrange(2**(N_SERIES*N))
                 reset.next = 1
                 yield tx(spi, indata)
 
                 # shift out data
-                # sample dout BEFORE sending bit
+                # sample dout when SCL == 1
                 yield start(spi)
                 for i in downrange(N_SERIES*N):
-                    collector[i] = dout
                     yield sendBit(spi, 0)
+                    collector[i] = dout
                 yield stop(spi)
                 assert collector == indata
             raise StopSimulation

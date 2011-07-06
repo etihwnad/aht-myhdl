@@ -23,9 +23,12 @@ def SPISlave(N, reset, scl, cs, din, dout, data):
     reg = Signal(intbv(0)[N:])
     sample = Signal(intbv(0)[0])
 
-    @always(scl.posedge)
+    @always(scl.posedge, reset.negedge)
     def SampleInput():
-        sample.next = din
+        if reset == ACTIVE_LOW:
+            sample.next = 0
+        else:
+            sample.next = din
 
     @always_comb
     def wire_dout():
@@ -35,14 +38,10 @@ def SPISlave(N, reset, scl, cs, din, dout, data):
     def InputRegister():
         if reset == ACTIVE_LOW:
             reg.next = 0
-            #dout.next = reg.next[N-1]
         else:
             if cs == ACTIVE_LOW:
                 #shift on falling edge
-                reg.next[N:1] = reg[N-1:]
-                reg.next[0] = sample
-            # correct out data always available
-            #dout.next = reg.next[N-1]
+                reg.next = concat(reg[N-1:], sample)
 
     @always(cs.posedge)
     def ChipSelect():

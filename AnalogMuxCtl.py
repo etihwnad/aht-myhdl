@@ -30,7 +30,6 @@ def AnalogMuxCtl(N, default, sel, swN, swP):
 
     SELECTOR = tuple(SELECTOR)
 
-    #def muxCtl(sel, swN, swP):
     x = Signal(intbv(0)[N:])
 
     @always_comb

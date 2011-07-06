@@ -36,13 +36,12 @@ def AnalogMuxCtl(N, default, sel, swN, swP):
     def logic():
         x.next = SELECTOR[sel]
 
-    @always_comb
+    @always(x)
     def outputs():
         swN.next = x
         swP.next = ~x
 
     return instances()
-    #return muxCtl
 
 
 def convert():

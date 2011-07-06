@@ -67,8 +67,9 @@ def Chain0Ctl(
 
 
     # Analog Mux
-    muxA = AnalogMuxCtl(N_MUX_INPUTS, 0, muxSelA, txAn, txAp)
-    muxB = AnalogMuxCtl(N_MUX_INPUTS, 0, muxSelB, txBn, txBp)
+    tAn, tAp, tBn, tBp = [Signal(intbv(0)[N_MUX_INPUTS:]) for i in range(4)]
+    muxA = AnalogMuxCtl(N_MUX_INPUTS, 0, muxSelA, tAn, tAp)
+    muxB = AnalogMuxCtl(N_MUX_INPUTS, 0, muxSelB, tBn, tBp)
 
     # Buffer switch control
     sA, sB = [Signal(intbv(0)[4:]) for i in range(2)]
@@ -76,8 +77,14 @@ def Chain0Ctl(
     bufSwCtlB = BufferCtl(bufModeB, sB)
 
 
-    #@always(cdata)
     @always_comb
+    def muxbits():
+        txAn.next = tAn
+        txAp.next = tAp
+        txBn.next = tBn
+        txBp.next = tBp
+
+    @always(cdata)
     def passthru():
         swAn.next = sA
         swAp.next = ~sA

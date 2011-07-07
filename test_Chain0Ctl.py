@@ -209,6 +209,6 @@ class TestChain0Ctl:
 
 if __name__ == '__main__':
     tb = TestChain0Ctl()
-    tb.setup_class()
+    tb.setup_method('foo')
     tb.test_spi_shift()
 

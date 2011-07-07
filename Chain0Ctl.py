@@ -84,7 +84,8 @@ def Chain0Ctl(
         txBn.next = tBn
         txBp.next = tBp
 
-    @always(cdata)
+    #@always(cdata)
+    @always_comb
     def passthru():
         swAn.next = sA
         swAp.next = ~sA

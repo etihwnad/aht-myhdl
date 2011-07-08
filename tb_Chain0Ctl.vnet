@@ -1,0 +1,80 @@
+module tb_Chain0Ctl;
+
+reg reset;
+reg scl;
+reg cs;
+reg din;
+wire dout;
+wire [48:0] txAn;
+wire [48:0] txAp;
+wire [48:0] txBn;
+wire [48:0] txBp;
+wire [3:0] swAn;
+wire [3:0] swAp;
+wire [3:0] swBn;
+wire [3:0] swBp;
+wire fastAn;
+wire fastAp;
+wire fastBn;
+wire fastBp;
+wire [11:0] tuneAn;
+wire [11:0] tuneAp;
+wire [11:0] tuneBn;
+wire [11:0] tuneBp;
+
+initial begin
+    $from_myhdl(
+        reset,
+        scl,
+        cs,
+        din
+    );
+    $to_myhdl(
+        dout,
+        txAn,
+        txAp,
+        txBn,
+        txBp,
+        swAn,
+        swAp,
+        swBn,
+        swBp,
+        fastAn,
+        fastAp,
+        fastBn,
+        fastBp,
+        tuneAn,
+        tuneAp,
+        tuneBn,
+        tuneBp
+    );
+end
+
+Chain0Ctl dut(
+    reset,
+    scl,
+    cs,
+    din,
+    dout,
+    txAn,
+    txAp,
+    txBn,
+    txBp,
+    swAn,
+    swAp,
+    swBn,
+    swBp,
+    fastAn,
+    fastAp,
+    fastBn,
+    fastBp,
+    tuneAn,
+    tuneAp,
+    tuneBn,
+    tuneBp
+);
+
+initial begin
+    $sdf_annotate("Chain0Ctl.sdf", dut);
+        end
+endmodule

@@ -1,24 +1,126 @@
 
 from math import log, ceil
+import os
 from random import randrange
 
 from myhdl import *
 
-from Chain0Ctl import Chain0Ctl
+from Chain0Ctl import Chain0Ctl as _Chain0Ctl
 
 
 CLKPERIOD = 10
 
-# buffer register bits
-# 15        cint/NotUsed
-# 14        zero/tuneMode
-# 13        se/buffer
-# 12        fast
-# [11:0]    tune
-
 N_DATA_BITS = 48
 N_MUX_INPUTS = 49 #48 harmonics + CMI
 N_MUX_BITS = int(ceil(log(N_MUX_INPUTS, 2)))
+
+
+COSIM = os.getenv('MYHDL_COSIM')
+if COSIM is None or COSIM == '0':
+    COSIM = False
+else:
+    COSIM = True
+
+SIMULATOR = os.getenv('MYHDL_SIMULATOR')
+if COSIM and not SIMULATOR:
+    SIMULATOR = 'iverilog'
+    print 'INFO: using default cosimulator:', SIMULATOR
+
+if COSIM:
+    print '*** Cosimulation with %s ***' % SIMULATOR
+
+
+
+def Chain0Ctl(
+        reset, scl, cs, din,
+        dout,
+        txAn, txAp,
+        txBn, txBp,
+        swAn, swAp,
+        swBn, swBp,
+        fastAn, fastAp,
+        fastBn, fastBp,
+        tuneAn, tuneAp,
+        tuneBn, tuneBp,
+        cosim=COSIM):
+    if cosim:
+        if SIMULATOR == 'iverilog':
+            runcmd = "vvp -m ./myhdl.vpi.%s -l Chain0Ctl.iverilog.log Chain0Ctl" % \
+                    os.getenv('HOSTNAME')
+            cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"Chain0Ctl.sdf\", dut);\n        end\nendmodule/' < tb_Chain0Ctl.v > tb_Chain0Ctl.vnet"
+            #cmd0 = "cp tb_Chain0Ctl.v tb_Chain0Ctl.vnet"
+            cmd1 = "iverilog -gspecify -o Chain0Ctl \
+                    ibm13rfrvt.verilog \
+                    Chain0Ctl.vnet \
+                    tb_Chain0Ctl.v"
+                        
+            print os.system(cmd0)
+            print os.system(cmd1)
+
+        elif SIMULATOR == 'cver':
+                    #+sdf_annotate Chain0Ctl.sdf+tb_Chain0Ctl.dut \
+            runcmd = "cver -l Chain0Ctl.cver.log +typdelays \
+                    +loadvpi=./myhdl.cver.twain.so:vpi_compat_bootstrap \
+                    +change_port_type \
+                    -informs \
+                    +printstats \
+                    -v ibm13rfrvt.verilog \
+                    Chain0Ctl.vnet \
+                    tb_Chain0Ctl.v"
+            cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"Chain0Ctl.sdf\", dut);\n        end\nendmodule/' < tb_Chain0Ctl.v > tb_Chain0Ctl.vnet"
+            print os.system(cmd0)
+        elif SIMULATOR == 'verilog':
+            runcmd = "verilog \
+                    -l Chain0Ctl.vxl.log \
+                    +loadvpi=./myhdl.verilog.doppler:myhdl_register \
+                    -v ibm13rfrvt.verilog \
+                    Chain0Ctl.vnet \
+                    tb_Chain0Ctl.vnet"
+            #cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"Chain0Ctl.sdf\", dut);\n        end\nendmodule/' < tb_Chain0Ctl.v > tb_Chain0Ctl.vnet"
+            #print os.system(cmd0)
+        else:
+            raise NameError('Unknown simulator: %s' % SIMULATOR)
+
+        print runcmd
+        return Cosimulation(
+                runcmd,
+                reset=reset,
+                scl=scl,
+                cs=cs,
+                din=din,
+                dout=dout,
+                txAn=txAn,
+                txAp=txAp,
+                txBn=txBn,
+                txBp=txBp,
+                swAn=swAn,
+                swAp=swAp,
+                swBn=swBn,
+                swBp=swBp,
+                fastAn=fastAn,
+                fastAp=fastAp,
+                fastBn=fastBn,
+                fastBp=fastBp,
+                tuneAn=tuneAn,
+                tuneAp=tuneAp,
+                tuneBn=tuneBn,
+                tuneBp=tuneBp
+                )
+
+    else:
+        return  _Chain0Ctl(
+               reset, scl, cs, din,
+                dout,
+                txAn, txAp,
+                txBn, txBp,
+                swAn, swAp,
+                swBn, swBp,
+                fastAn, fastAp,
+                fastBn, fastBp,
+                tuneAn, tuneAp,
+                tuneBn, tuneBp
+                )
+
 
 class TestChain0Ctl:
     #@classmethod

@@ -366,8 +366,8 @@ module HarmonicInterface(clk_in, reset_in, scl_in, cs_in, din, nco_i,
        .Q (), .QN (\nco_phase[6] ));
   DFFRX2TF \nco_phase_reg[7] (.RN (reset_in), .CK (clk_in), .D (n_36),
        .Q (), .QN (\nco_phase[7] ));
-  DFFQX1TF spiSlave_sample_reg(.CK (scl_in), .D (din), .Q
-       (spiSlave_sample));
+  DFFRX2TF spiSlave_sample_reg(.RN (reset_in), .CK (scl_in), .D (din),
+       .Q (spiSlave_sample), .QN ());
   AND2X1TF g388(.A (n_95), .B (\cdata[46] ), .Y (n_43));
   AND2X1TF g389(.A (n_86), .B (\cdata[46] ), .Y (n_42));
   AND2X1TF g390(.A (n_85), .B (\cdata[46] ), .Y (n_41));

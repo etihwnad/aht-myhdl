@@ -74,10 +74,14 @@ def Chain0Ctl(
                     -l Chain0Ctl.vxl.log \
                     +loadvpi=./myhdl.verilog.doppler:myhdl_register \
                     -v ibm13rfrvt.verilog \
-                    Chain0Ctl.vnet \
+                    Chain0Ctl.vxl \
                     tb_Chain0Ctl.vnet"
-            #cmd0 = r"sed -e 's/endmodule/initial begin\n    $sdf_annotate(\"Chain0Ctl.sdf\", dut);\n        end\nendmodule/' < tb_Chain0Ctl.v > tb_Chain0Ctl.vnet"
-            #print os.system(cmd0)
+            cmd0 = "echo \`timescale 1ns/1ps | cat - Chain0Ctl.vnet > Chain0Ctl.vxl"
+            cmd1 = "echo \`timescale 1ns/1ps > tb_Chain0Ctl.vnet"
+            cmd2 = r"sed -e 's/endmodule/initial begin  $sdf_annotate(\"Chain0Ctl.sdf\", dut); end  endmodule/' < tb_Chain0Ctl.v >> tb_Chain0Ctl.vnet"
+            print os.system(cmd0)
+            print os.system(cmd1)
+            print os.system(cmd2)
         else:
             raise NameError('Unknown simulator: %s' % SIMULATOR)
 

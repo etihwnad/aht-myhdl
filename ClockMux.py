@@ -52,14 +52,14 @@ def ClockMux(N, reset, sel, in_clocks, out_clock):
         """
         d0, d1 = [Signal(intbv(0)[0]) for i in range(2)]
 
-        @always(clk_in.posedge, reset)
+        @always(clk_in.posedge, reset.negedge)
         def stage0():
             if reset == ACTIVE_LOW:
                 d0.next = 0
             else:
                 d0.next = en_in
 
-        @always(clk_in.negedge, reset)
+        @always(clk_in.negedge, reset.negedge)
         def stage1():
             if reset == ACTIVE_LOW:
                 en_out.next = 0

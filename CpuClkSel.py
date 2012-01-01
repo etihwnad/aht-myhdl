@@ -7,6 +7,15 @@ from ClockMux import ClockMux
 ACTIVE_HIGH, INACTIVE_LOW = 1,0
 ACTIVE_LOW, INACTIVE_HIGH = 0,1
 
+# FIXME: give a Fail-Safe state, or not-allowed 'sel' combinations
+# to avoid shooting one's self in the foot.
+#
+# Here, sel=10b disables the HFxtal and also selects it (<-- BAD)
+# DO NOT rely on proper coding to ensure this state is never reached,
+# do this in hardware!!
+# (the ns430 bootloader code does exactly this, compiled to ROM code
+#  before Dan completely audited the boot code)
+#
 def CpuClkSel(reset, sel, hfxtal, lfxtal, hf_en, cpu_clk):
     """NS430 system clock select, HF enable
     
@@ -17,6 +26,9 @@ def CpuClkSel(reset, sel, hfxtal, lfxtal, hf_en, cpu_clk):
 
     hf_en   - Enable HF crystal
     cpu_clk - Main clock for NS430
+
+    sel[1] is ~hf_en or "Disable HFXTAL"
+    sel[0] selects [hf, lf] xtal inputs
     """
 
     clk_sel = Signal(intbv(0)[0])

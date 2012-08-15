@@ -9,7 +9,8 @@ tests=$(foreach mod, $(modules), test_$(mod:.py=.test))
 vcd=$(foreach mod, $(modules), bench_$(mod:.py=.vcd))
 
 PYTHON=python
-PY_TEST=pypy -m pytest
+PY_TEST ?= ./pypy-1.9/bin/pypy -m pytest
+#PY_TEST ?= python -m pytest
 
 all: test hdl
 	@echo $(modules)
